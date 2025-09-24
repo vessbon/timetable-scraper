@@ -13,7 +13,7 @@ class Student:
 
         self.timetable = Timetable(username, school, start_week, end_week)
 
-student = Student("antnor", "Kattegattgymnasiet",  39, 42)
+student = Student("your_username", "your_school",  39, 51)
 timetable = student.timetable
 
 result = timetable.lessons

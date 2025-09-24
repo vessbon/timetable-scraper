@@ -105,6 +105,9 @@ class Timetable:
         Saves all the identified lessons from current timetable data to the instance.
         """
         for tt in self.data:
+            if not tt or "lessonInfo" not in tt or not tt["lessonInfo"]:
+                continue
+
             for lesson in tt["lessonInfo"]:
                 lesson_color = self._get_lesson_color(lesson["guidId"])
                 lesson = Lesson(lesson_data=lesson, school=tt["metadata"][0]["schoolName"], color=lesson_color)
@@ -117,7 +120,7 @@ class Timetable:
                 return element["bColor"]
         return None
 
-    def _get_timetable(self, week: int) -> dict:
+    def _get_timetable(self, week: int) -> dict | None:
         url = "https://web.skola24.se/api/render/timetable"
         year = datetime.now().year
 
@@ -145,7 +148,13 @@ class Timetable:
         }
 
         response = requests.post(url, headers=self.headers, cookies=self.cookies, json=payload)
-        data = response.json()["data"]
+        json_data = response.json().get("data")
+
+        if not json_data["lessonInfo"]:
+            print(f"No lessons for week {week}.")
+            return None
+
+        data = json_data
         data["week"] = week
         data["year"] = year
 
@@ -165,7 +174,10 @@ class Timetable:
     def _get_timetables(self, weeks: list) -> list:
         timetables = []
         for week in weeks:
-            timetables.append(self._get_timetable(week=week))
+            week_data = self._get_timetable(week=week)
+            if week_data is not None:
+                timetables.append(week_data)
+
         return timetables
 
     def _get_signature(self) -> str:

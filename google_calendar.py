@@ -6,7 +6,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from scraper import Lesson
-from datetime import datetime
+from datetime import datetime, timedelta
 from colors import closest_color_id
 
 
@@ -100,3 +100,34 @@ def add_lesson_to_calendar(service, lesson: Lesson, calendar_id: int = "primary"
 def add_lessons_to_calendar(service, lessons: list[Lesson], calendar_id: int = "primary"):
     for lesson in lessons:
         add_lesson_to_calendar(service, lesson, calendar_id)
+
+def clear_unique_days(service, calendar_id: str, lessons: list[Lesson]):
+    # Get all unique dates from the lessons
+    unique_dates = {lesson.date for lesson in lessons}
+
+    for d in unique_dates:
+        clear_day(service, calendar_id, d)
+
+def clear_day(service, calendar_id: str, target_date: datetime):
+    start_time = datetime.combine(target_date, datetime.min.time())
+    end_time = start_time + timedelta(days=1)
+
+    event_results = service.events().list(
+        calendarId=calendar_id,
+        timeMin=start_time.isoformat() + "Z",
+        timeMax=end_time.isoformat() + "Z",
+        singleEvents=True
+    ).execute()
+
+    events = event_results.get("items", [])
+    for event in events:
+        service.events().delete(calendarId=calendar_id, eventId=event["id"]).execute()
+
+    print(f"Cleared {len(events)} events on {target_date}.")
+
+def clear_week(service, calendar_id: str, week: int, year: int):
+    # Monday of that ISO week
+    start_date = datetime.fromisocalendar(year, week, 1) # monday of specified week
+    for i in range(7):
+        clear_day(service, calendar_id, start_date + timedelta(days=i))
+

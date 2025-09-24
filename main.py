@@ -1,6 +1,5 @@
-from google_calendar import get_calendar_service
-from datetime import datetime
-from scraper import Timetable, Lesson
+from google_calendar import get_calendar_service, add_lessons_to_calendar, get_or_create_calendar
+from scraper import Timetable
 
 service = get_calendar_service()
 
@@ -8,47 +7,14 @@ service = get_calendar_service()
 class Student:
     def __init__(self, username: str, school: str, start_week: int = 0, end_week: int = -1):
         self.username = username
-        self.timetable = Timetable(username, school,  start_week, end_week)
+        self.timetable = Timetable(username, school, start_week, end_week)
 
-
-def add_lesson_to_calendar(lesson: Lesson):
-    # Split time strings like "08:30"
-    start_hour, start_minute = map(int, lesson.time_start.split(":"))
-    end_hour, end_minute = map(int, lesson.time_end.split(":"))
-
-    # Combine lesson.date (a datetime.date) with times
-    start_time = datetime.combine(lesson.date, datetime.min.time()).replace(
-        hour=start_hour, minute=start_minute
-    )
-    end_time = datetime.combine(lesson.date, datetime.min.time()).replace(
-        hour=end_hour, minute=end_minute
-    )
-
-    event = {
-        "summary": lesson.name,
-        "location": lesson.school,
-        "description": f"In {lesson.room} with {', '.join(lesson.teachers)}.",
-        "start": {
-            "dateTime": start_time.isoformat(),
-            "timeZone": "Europe/Stockholm"
-        },
-        "end": {
-            "dateTime": end_time.isoformat(),
-            "timeZone": "Europe/Stockholm"
-        },
-        "reminders": {
-            "useDefault": False,
-            "overrides": [
-                {"method": "popup", "minutes": 10},
-            ]
-        }
-    }
-
-    created_event = service.events().insert(calendarId="primary", body=event).execute()
-    print(f"Added: {created_event.get('summary')} at {created_event['start']['dateTime']}")
-
-student = Student("you_username_here", "your_school_here",  39)
+student = Student("your_username", "your_school",  39, 42)
 timetable = student.timetable
 
-l = timetable.get_lessons_day(4)[0]
-add_lesson_to_calendar(l)
+result = timetable.lessons
+#result = timetable.get_lessons_week(39)
+#result = timetable.get_lessons_day(4)
+
+calendar_id = get_or_create_calendar(service, "School") # leave calendar name empty for primary calendar
+add_lessons_to_calendar(service=service, lessons=result, calendar_id=calendar_id)

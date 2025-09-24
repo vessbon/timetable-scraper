@@ -3,7 +3,7 @@ import json
 import requests
 
 class Lesson:
-    def __init__(self, lesson_data, school):
+    def __init__(self, lesson_data, school, color=None):
         self.name = lesson_data["texts"][0]
         self.school = school
         self.teachers = [t.strip() for t in lesson_data["texts"][1].split(",")]
@@ -16,7 +16,7 @@ class Lesson:
         self.time_end = datetime.strptime(
             lesson_data["timeEnd"], "%H:%M:%S").strftime("%H:%M")
 
-        self.gui_id = lesson_data["guidId"]
+        self.color = color
 
         self.date = lesson_data["date"]
         self.year = self.date.year
@@ -86,12 +86,7 @@ class Timetable:
         :arg week: The week of the lesson. Accepts a value from 1-52.
         :return: A list of lesson objects.
         """
-        lessons = []
-        for tt in self.data:
-            if tt["week"] == week:
-                for lesson in self.lessons:
-                    lessons.append(lesson)
-        return lessons
+        return [lesson for lesson in self.lessons if lesson.week == week]
 
     def get_lessons_day(self, day: int | str) -> list:
         """
@@ -111,8 +106,16 @@ class Timetable:
         """
         for tt in self.data:
             for lesson in tt["lessonInfo"]:
-                lesson = Lesson(lesson_data=lesson, school=tt["metadata"][0]["schoolName"])
+                lesson_color = self._get_lesson_color(lesson["guidId"])
+                lesson = Lesson(lesson_data=lesson, school=tt["metadata"][0]["schoolName"], color=lesson_color)
                 self.lessons.append(lesson)
+
+    def _get_lesson_color(self, gui_id) -> str | None:
+        for element in self.data[0]["boxList"]:
+            gid = element["lessonGuids"]
+            if gid is not None and gid[0] == gui_id:
+                return element["bColor"]
+        return None
 
     def _get_timetable(self, week: int) -> dict:
         url = "https://web.skola24.se/api/render/timetable"
